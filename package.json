@@ -10,9 +10,14 @@
   },
   "private": true,
   "dependencies": {
-    "@replit/connectors-sdk": "^0.4.1"
+    "@replit/connectors-sdk": "^0.4.1",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.2",
+    "drizzle-zod": "^0.8.3",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
+    "@types/pg": "^8.21.0",
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
   }

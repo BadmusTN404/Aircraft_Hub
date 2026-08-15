@@ -10,6 +10,16 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Maintenance control dashboard
+  - name: aircraft
+    description: Aircraft records
+  - name: tasks
+    description: Maintenance and time-change tasks
+  - name: records
+    description: Maintenance records and uploads
+  - name: Auth
+    description: Browser and mobile authentication endpoints
 paths:
   /healthz:
     get:
@@ -24,8 +34,446 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: Auth status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUserEnvelope"
+  /login:
+    get:
+      tags: [Auth]
+      operationId: beginBrowserLogin
+      summary: Start browser login
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to the login provider
+  /callback:
+    get:
+      tags: [Auth]
+      operationId: handleBrowserLoginCallback
+      summary: Complete browser login
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: iss
+          in: query
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect after login
+  /logout:
+    get:
+      tags: [Auth]
+      operationId: logoutBrowserSession
+      summary: End the browser session
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+        - name: returnTo
+          in: query
+          schema:
+            type: string
+            default: /
+      responses:
+        "302":
+          description: Redirect after logout
+  /mobile-auth/token-exchange:
+    post:
+      tags: [Auth]
+      operationId: exchangeMobileAuthorizationCode
+      summary: Exchange a mobile authorization code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileTokenExchangeRequest"
+      responses:
+        "200":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileTokenExchangeSuccess"
+  /mobile-auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutMobileSession
+      summary: Delete a mobile session
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+      responses:
+        "200":
+          description: Logout processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutSuccess"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get maintenance control summary
+      responses:
+        "200":
+          description: Current maintenance summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /activity:
+    get:
+      operationId: getActivity
+      tags: [dashboard]
+      summary: Get recent maintenance activity
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: number
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+  /aircraft:
+    get:
+      operationId: listAircraft
+      tags: [aircraft]
+      summary: List aircraft
+      responses:
+        "200":
+          description: Aircraft list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Aircraft"
+    post:
+      operationId: createAircraft
+      tags: [aircraft]
+      summary: Add an aircraft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AircraftInput"
+      responses:
+        "201":
+          description: Aircraft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Aircraft"
+  /aircraft/{aircraftId}:
+    get:
+      operationId: getAircraft
+      tags: [aircraft]
+      summary: Get an aircraft
+      parameters:
+        - $ref: "#/components/parameters/AircraftId"
+      responses:
+        "200":
+          description: Aircraft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Aircraft"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateAircraft
+      tags: [aircraft]
+      summary: Update aircraft utilisation
+      parameters:
+        - $ref: "#/components/parameters/AircraftId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AircraftUpdate"
+      responses:
+        "200":
+          description: Updated aircraft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Aircraft"
+  /tasks:
+    get:
+      operationId: listMaintenanceTasks
+      tags: [tasks]
+      summary: List maintenance and time-change tasks
+      parameters:
+        - name: aircraftId
+          in: query
+          schema:
+             type: number
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [overdue, due_soon, on_track, completed]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Maintenance tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MaintenanceTask"
+    post:
+      operationId: createMaintenanceTask
+      tags: [tasks]
+      summary: Add a maintenance or time-change task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaintenanceTaskInput"
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaintenanceTask"
+  /tasks/{taskId}:
+    patch:
+      operationId: updateMaintenanceTask
+      tags: [tasks]
+      summary: Update a maintenance task
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaintenanceTaskUpdate"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaintenanceTask"
+  /records:
+    get:
+      operationId: listMaintenanceRecords
+      tags: [records]
+      summary: List uploaded maintenance records
+      parameters:
+        - name: aircraftId
+          in: query
+          schema:
+             type: number
+        - name: reviewStatus
+          in: query
+          schema:
+            type: string
+            enum: [pending, reviewed, rejected]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Maintenance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MaintenanceRecord"
+    post:
+      operationId: createMaintenanceRecord
+      tags: [records]
+      summary: Save maintenance record metadata after upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MaintenanceRecordInput"
+      responses:
+        "201":
+          description: Record saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaintenanceRecord"
+  /records/{recordId}/review:
+    patch:
+      operationId: reviewMaintenanceRecord
+      tags: [records]
+      summary: Review or reject a maintenance record
+      parameters:
+        - $ref: "#/components/parameters/RecordId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordReviewInput"
+      responses:
+        "200":
+          description: Reviewed record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaintenanceRecord"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [records]
+      summary: Request a private upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadRequest"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
 components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      schema:
+        type: string
+    AircraftId:
+      name: aircraftId
+      in: path
+      required: true
+      schema:
+        type: number
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: number
+    RecordId:
+      name: recordId
+      in: path
+      required: true
+      schema:
+        type: number
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: ["string", "null"]
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        profileImageUrl:
+          type: ["string", "null"]
+      required: [id, email, firstName, lastName, profileImageUrl]
+    AuthUserEnvelope:
+      type: object
+      properties:
+        user:
+          oneOf:
+            - $ref: "#/components/schemas/AuthUser"
+            - type: "null"
+      required: [user]
+    MobileTokenExchangeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+      required: [code, code_verifier, redirect_uri, state]
+    MobileTokenExchangeSuccess:
+      type: object
+      properties:
+        token:
+          type: string
+      required: [token]
+    LogoutSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+      required: [success]
     HealthStatus:
       type: object
       properties:
@@ -33,4 +481,285 @@ components:
           type: string
       required:
         - status
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    DashboardSummary:
+      type: object
+      properties:
+        aircraftCount:
+          type: number
+        overdueCount:
+          type: number
+        dueSoonCount:
+          type: number
+        pendingRecordsCount:
+          type: number
+        openTaskCount:
+          type: number
+        utilisationHours:
+          type: number
+      required: [aircraftCount, overdueCount, dueSoonCount, pendingRecordsCount, openTaskCount, utilisationHours]
+    Activity:
+      type: object
+      properties:
+        id:
+          type: number
+        kind:
+          type: string
+          enum: [record_uploaded, task_updated, aircraft_updated, record_reviewed]
+        title:
+          type: string
+        detail:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, kind, title, detail, createdAt]
+    Aircraft:
+      type: object
+      properties:
+        id:
+          type: number
+        registration:
+          type: string
+        aircraftType:
+          type: string
+        serialNumber:
+          type: string
+        operator:
+          type: string
+        totalHours:
+          type: number
+        totalCycles:
+          type: number
+        status:
+          type: string
+          enum: [serviceable, attention, grounded]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, registration, aircraftType, serialNumber, operator, totalHours, totalCycles, status, updatedAt]
+    AircraftInput:
+      type: object
+      properties:
+        registration:
+          type: string
+          minLength: 2
+        aircraftType:
+          type: string
+          minLength: 2
+        serialNumber:
+          type: string
+          minLength: 2
+        operator:
+          type: string
+          minLength: 2
+        totalHours:
+          type: number
+          minimum: 0
+        totalCycles:
+          type: number
+          minimum: 0
+      required: [registration, aircraftType, serialNumber, operator]
+    AircraftUpdate:
+      type: object
+      properties:
+        totalHours:
+          type: number
+          minimum: 0
+        totalCycles:
+          type: number
+          minimum: 0
+        status:
+          type: string
+          enum: [serviceable, attention, grounded]
+    MaintenanceTask:
+      type: object
+      properties:
+        id:
+          type: number
+        aircraftId:
+          type: number
+        aircraftRegistration:
+          type: string
+        title:
+          type: string
+        taskNumber:
+          type: string
+        category:
+          type: string
+          enum: [inspection, time_change, service, life_limit]
+        intervalHours:
+          type: ["number", "null"]
+        intervalCycles:
+          type: ["number", "null"]
+        intervalDays:
+          type: ["number", "null"]
+        lastAccomplishedAt:
+          type: ["string", "null"]
+          format: date
+        nextDueAt:
+          type: ["string", "null"]
+          format: date
+        nextDueHours:
+          type: ["number", "null"]
+        nextDueCycles:
+          type: ["number", "null"]
+        status:
+          type: string
+          enum: [overdue, due_soon, on_track, completed]
+        owner:
+          type: string
+        notes:
+          type: ["string", "null"]
+      required: [id, aircraftId, aircraftRegistration, title, taskNumber, category, intervalHours, intervalCycles, intervalDays, lastAccomplishedAt, nextDueAt, nextDueHours, nextDueCycles, status, owner, notes]
+    MaintenanceTaskInput:
+      type: object
+      properties:
+        aircraftId:
+          type: number
+        title:
+          type: string
+          minLength: 2
+        taskNumber:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          enum: [inspection, time_change, service, life_limit]
+        intervalHours:
+          type: number
+          minimum: 0
+        intervalCycles:
+          type: number
+          minimum: 0
+        intervalDays:
+          type: number
+          minimum: 0
+        lastAccomplishedAt:
+          type: string
+          format: date
+        nextDueAt:
+          type: string
+          format: date
+        nextDueHours:
+          type: number
+          minimum: 0
+        nextDueCycles:
+          type: number
+          minimum: 0
+        owner:
+          type: string
+        notes:
+          type: string
+      required: [aircraftId, title, taskNumber, category, owner]
+    MaintenanceTaskUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [overdue, due_soon, on_track, completed]
+        lastAccomplishedAt:
+          type: string
+          format: date
+        nextDueAt:
+          type: string
+          format: date
+        nextDueHours:
+          type: number
+          minimum: 0
+        nextDueCycles:
+          type: number
+          minimum: 0
+        notes:
+          type: string
+    MaintenanceRecord:
+      type: object
+      properties:
+        id:
+          type: number
+        aircraftId:
+          type: number
+        aircraftRegistration:
+          type: string
+        documentName:
+          type: string
+        recordType:
+          type: string
+          enum: [tech_log, work_order, certificate, release, component_record, other]
+        airline:
+          type: string
+        objectPath:
+          type: ["string", "null"]
+        fileSize:
+          type: number
+        description:
+          type: ["string", "null"]
+        reviewStatus:
+          type: string
+          enum: [pending, reviewed, rejected]
+        uploadedBy:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [id, aircraftId, aircraftRegistration, documentName, recordType, airline, objectPath, fileSize, description, reviewStatus, uploadedBy, uploadedAt, reviewedAt]
+    MaintenanceRecordInput:
+      type: object
+      properties:
+        aircraftId:
+          type: number
+        documentName:
+          type: string
+          minLength: 1
+        recordType:
+          type: string
+          enum: [tech_log, work_order, certificate, release, component_record, other]
+        airline:
+          type: string
+          minLength: 2
+        objectPath:
+          type: string
+        fileSize:
+          type: number
+          minimum: 0
+        description:
+          type: string
+      required: [aircraftId, documentName, recordType, airline, fileSize]
+    RecordReviewInput:
+      type: object
+      properties:
+        reviewStatus:
+          type: string
+          enum: [reviewed, rejected]
+      required: [reviewStatus]
+    UploadRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: number
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+      required: [name, size, contentType]
+    UploadResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+          format: url
+        objectPath:
+          type: string
+      required: [uploadURL, objectPath]
 

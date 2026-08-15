@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "RUBICCON-CAMP"
+description = "A computerized approved maintenance program for aircraft operators to monitor scheduled maintenance, time-change components, due items, and airline-supplied maintenance records in one auditable workspace."
+version = "1.0.0"
+id = "artifacts/amp-monitor"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20773
+
+[services.development]
+run = "pnpm --filter @workspace/amp-monitor run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/amp-monitor", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/amp-monitor/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20773"
+BASE_PATH = "/"
