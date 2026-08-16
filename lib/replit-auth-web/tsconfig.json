@@ -1,10 +1,30 @@
+//{
+//  "extends": "../../tsconfig.base.json",
+//  "compilerOptions": {
+//    "outDir": "dist",
+//    "rootDir": "src",
+//    "jsx": "react-jsx",
+//    "lib": ["esnext", "dom", "dom.iterable"]
+// },
+//  "include": ["src"]
+//} 
+
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "target": "ES2020",
+    "lib": ["ESNext", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["vite/client"],
     "outDir": "dist",
     "rootDir": "src",
     "jsx": "react-jsx",
-    "lib": ["esnext", "dom", "dom.iterable"]
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
   "include": ["src"]
 }

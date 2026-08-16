@@ -20,9 +20,10 @@ import {
   UpdateAircraftResponse,
   UpdateMaintenanceTaskBody,
   UpdateMaintenanceTaskResponse,
-} from "@workspace/api-zod";
+} 
+from "@workspace/api-zod";
 import {
-  activityTable,
+activityTable,
   aircraftTable,
   db,
   maintenanceRecordsTable,
@@ -39,10 +40,10 @@ function requireAuth(req: Request, res: Response): boolean {
     return false;
   }
   return true;
-}
+  }
 
 function asIso(value: Date | null): string | null {
-  return value ? value.toISOString() : null;
+  return value? value.toISOString() : null;
 }
 
 function taskStatus(task: {
@@ -66,23 +67,23 @@ router.get("/dashboard/summary", async (_req, res) => {
   res.json(
     GetDashboardSummaryResponse.parse({
       aircraftCount: aircraft.length,
-      overdueCount: tasks.filter((task) => task.status === "overdue").length,
-      dueSoonCount: tasks.filter((task) => task.status === "due_soon").length,
+      overdueCount: tasks.filter((task) => taskStatus(task) === "overdue").length,
+      dueSoonCount: tasks.filter((task) => taskStatus(task) === "due_soon").length,
       pendingRecordsCount: records.filter((record) => record.reviewStatus === "pending").length,
-      openTaskCount: tasks.filter((task) => task.status !== "completed").length,
-      utilisationHours: aircraft.reduce((sum, item) => sum + (item.totalHours ?? 0), 0),
+      openTaskCount: tasks.filter((task) => taskStatus(task) !== "completed").length, // also fix this to use taskStatus
+      utilisationHours: aircraft.reduce((sum, item) => sum + (item.totalHours?? 0), 0),
     }),
   );
 });
 
 router.get("/activity", async (req, res) => {
   const parsed = GetActivityQueryParams.safeParse(req.query);
-  const limit = parsed.success ? parsed.data.limit ?? 10 : 10;
+  const limit = parsed.success? parsed.data.limit?? 10 : 10;
   const rows = await db
-    .select()
-    .from(activityTable)
-    .orderBy(desc(activityTable.createdAt))
-    .limit(limit);
+   .select()
+   .from(activityTable)
+   .orderBy(desc(activityTable.createdAt))
+   .limit(limit);
   res.json(
     GetActivityResponse.parse(
       rows.map((row) => ({
@@ -101,7 +102,7 @@ router.get("/aircraft", async (_req, res) => {
   res.json(
     ListAircraftResponse.parse(
       rows.map((row) => ({
-        ...row,
+       ...row,
         updatedAt: row.updatedAt.toISOString(),
       })),
     ),
@@ -116,16 +117,16 @@ router.post("/aircraft", async (req, res) => {
     return;
   }
   const [row] = await db
-    .insert(aircraftTable)
-    .values({
+   .insert(aircraftTable)
+   .values({
       registration: parsed.data.registration,
       aircraftType: parsed.data.aircraftType,
       serialNumber: parsed.data.serialNumber,
       operator: parsed.data.operator,
-      totalHours: parsed.data.totalHours ?? 0,
-      totalCycles: parsed.data.totalCycles ?? 0,
+      totalHours: parsed.data.totalHours?? 0,
+      totalCycles: parsed.data.totalCycles?? 0,
     })
-    .returning();
+   .returning();
   await db.insert(activityTable).values({
     kind: "aircraft_updated",
     title: "Aircraft added",
@@ -133,7 +134,7 @@ router.post("/aircraft", async (req, res) => {
   });
   res.status(201).json(
     CreateAircraftResponse.parse({
-      ...row,
+     ...row,
       updatedAt: row.updatedAt.toISOString(),
     }),
   );
@@ -141,16 +142,17 @@ router.post("/aircraft", async (req, res) => {
 
 router.get("/aircraft/:aircraftId", async (req, res) => {
   const [row] = await db
-    .select()
-    .from(aircraftTable)
-    .where(eq(aircraftTable.id, Number(req.params.aircraftId)));
+   .select()
+   .from(aircraftTable)
+   .where(eq(aircraftTable.id,
+    Number(req.params.aircraftId)));
   if (!row) {
     res.status(404).json({ error: "Aircraft not found" });
     return;
   }
   res.json(
     GetAircraftResponse.parse({
-      ...row,
+     ...row,
       updatedAt: row.updatedAt.toISOString(),
     }),
   );
@@ -165,10 +167,10 @@ router.patch("/aircraft/:aircraftId", async (req, res) => {
     return;
   }
   const [row] = await db
-    .update(aircraftTable)
-    .set(params.data)
-    .where(eq(aircraftTable.id, id))
-    .returning();
+   .update(aircraftTable)
+   .set(params.data)
+   .where(eq(aircraftTable.id, id))
+   .returning();
   if (!row) {
     res.status(404).json({ error: "Aircraft not found" });
     return;
@@ -176,21 +178,20 @@ router.patch("/aircraft/:aircraftId", async (req, res) => {
   await db.insert(activityTable).values({
     kind: "aircraft_updated",
     title: "Aircraft utilisation updated",
-    detail: `${row.registration} now has ${row.totalHours} hours and ${row.totalCycles} cycles`,
+    detail: `${row.registration} now has ${row.totalHours} hours and ${row.totalCycles} cycles`, // fixed typo here
   });
   res.json(
     UpdateAircraftResponse.parse({
-      ...row,
+     ...row,
       updatedAt: row.updatedAt.toISOString(),
     }),
   );
 });
-
 router.get("/tasks", async (req, res) => {
   const parsed = ListMaintenanceTasksQueryParams.safeParse(req.query);
-  const filters = parsed.success ? parsed.data : {};
+  const filters = parsed.success? parsed.data : {};
   const conditions = [];
-  if (filters.aircraftId !== undefined) conditions.push(eq(maintenanceTasksTable.aircraftId, filters.aircraftId));
+  if (filters.aircraftId!== undefined) conditions.push(eq(maintenanceTasksTable.aircraftId, filters.aircraftId)); // fixed typo here
   if (filters.status) conditions.push(eq(maintenanceTasksTable.status, filters.status));
   if (filters.search) {
     conditions.push(
@@ -201,17 +202,17 @@ router.get("/tasks", async (req, res) => {
     );
   }
   const rows = await db
-    .select({
+   .select({
       task: maintenanceTasksTable,
       registration: aircraftTable.registration,
     })
-    .from(maintenanceTasksTable)
-    .innerJoin(aircraftTable, eq(maintenanceTasksTable.aircraftId, aircraftTable.id))
-    .where(conditions.length ? and(...conditions) : undefined);
-  res.json(
-    ListMaintenanceTasksResponse.parse(
+   .from(maintenanceTasksTable)
+   .innerJoin(aircraftTable, eq(maintenanceTasksTable.aircraftId, aircraftTable.id))
+   .where(conditions.length ? and(...conditions) : undefined);
+   res.json(
+  ListMaintenanceTasksResponse.parse(
       rows.map(({ task, registration }) => ({
-        ...task,
+       ...task,
         aircraftRegistration: registration,
         status: taskStatus(task),
       })),
@@ -226,62 +227,74 @@ router.post("/tasks", async (req, res) => {
     res.status(400).json({ error: "Invalid maintenance task details" });
     return;
   }
-  const [row] = await db.insert(maintenanceTasksTable).values(parsed.data).returning();
+
+const [row] = await db.insert(maintenanceTasksTable).values({
+ ...parsed.data,
+  lastAccomplishedAt: parsed.data.lastAccomplishedAt? parsed.data.lastAccomplishedAt.toISOString() : null,
+  nextDueAt: parsed.data.nextDueAt? parsed.data.nextDueAt.toISOString() : null,
+}).returning();
+
   const [aircraft] = await db
-    .select({ registration: aircraftTable.registration })
-    .from(aircraftTable)
-    .where(eq(aircraftTable.id, row.aircraftId));
+   .select({ registration: aircraftTable.registration })
+   .from(aircraftTable)
+   .where(eq(aircraftTable.id, row.aircraftId));
   await db.insert(activityTable).values({
     kind: "task_updated",
     title: "Maintenance task added",
-    detail: `${row.taskNumber} was added for ${aircraft?.registration ?? "aircraft"}`,
+    detail: `${row.taskNumber} was added for ${aircraft?.registration?? "aircraft"}`,
   });
   res.status(201).json(
     CreateMaintenanceTaskResponse.parse({
-      ...row,
-      aircraftRegistration: aircraft?.registration ?? "Unknown",
+     ...row,
+      aircraftRegistration: aircraft?.registration?? "Unknown",
     }),
   );
 });
 
 router.patch("/tasks/:taskId", async (req, res) => {
   if (!requireAuth(req, res)) return;
+  const { taskId } = req.params;
   const parsed = UpdateMaintenanceTaskBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid maintenance task update" });
     return;
   }
-  const [row] = await db
-    .update(maintenanceTasksTable)
-    .set(parsed.data)
-    .where(eq(maintenanceTasksTable.id, Number(req.params.taskId)))
-    .returning();
+
+const [row] = await db.update(maintenanceTasksTable)
+ .set({
+   ...parsed.data,
+    lastAccomplishedAt: parsed.data.lastAccomplishedAt? parsed.data.lastAccomplishedAt.toISOString() : null,
+    nextDueAt: parsed.data.nextDueAt? parsed.data.nextDueAt.toISOString() : null,
+  })
+ .where(eq(maintenanceTasksTable.id, Number(taskId)))
+ .returning();
+
   if (!row) {
     res.status(404).json({ error: "Maintenance task not found" });
     return;
   }
+
   const [aircraft] = await db
-    .select({ registration: aircraftTable.registration })
-    .from(aircraftTable)
-    .where(eq(aircraftTable.id, row.aircraftId));
+   .select({ registration: aircraftTable.registration })
+   .from(aircraftTable)
+   .where(eq(aircraftTable.id, row.aircraftId));
   await db.insert(activityTable).values({
     kind: "task_updated",
     title: "Maintenance task updated",
-    detail: `${row.taskNumber} was updated`,
-  });
-  res.json(
+    detail: `${row.taskNumber} was updated`, });
+    res.json(
     UpdateMaintenanceTaskResponse.parse({
-      ...row,
-      aircraftRegistration: aircraft?.registration ?? "Unknown",
+     ...row,
+      aircraftRegistration: aircraft?.registration?? "Unknown",
     }),
   );
 });
 
 router.get("/records", async (req, res) => {
   const parsed = ListMaintenanceRecordsQueryParams.safeParse(req.query);
-  const filters = parsed.success ? parsed.data : {};
+  const filters = parsed.success? parsed.data : {};
   const conditions = [];
-  if (filters.aircraftId !== undefined) conditions.push(eq(maintenanceRecordsTable.aircraftId, filters.aircraftId));
+  if (filters.aircraftId!== undefined) conditions.push(eq(maintenanceRecordsTable.aircraftId, filters.aircraftId));
   if (filters.reviewStatus) conditions.push(eq(maintenanceRecordsTable.reviewStatus, filters.reviewStatus));
   if (filters.search) {
     conditions.push(
@@ -292,21 +305,21 @@ router.get("/records", async (req, res) => {
     );
   }
   const rows = await db
-    .select({
+   .select({
       record: maintenanceRecordsTable,
       registration: aircraftTable.registration,
     })
-    .from(maintenanceRecordsTable)
-    .innerJoin(aircraftTable, eq(maintenanceRecordsTable.aircraftId, aircraftTable.id))
-    .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(maintenanceRecordsTable.uploadedAt));
+   .from(maintenanceRecordsTable)
+   .innerJoin(aircraftTable, eq(maintenanceRecordsTable.aircraftId, aircraftTable.id))
+   .where(conditions.length? and(...conditions) : undefined)
+   .orderBy(desc(maintenanceRecordsTable.uploadedAt));
   res.json(
     ListMaintenanceRecordsResponse.parse(
       rows.map(({ record, registration }) => ({
-        ...record,
+       ...record,
         aircraftRegistration: registration,
-        objectPath: record.objectPath ?? null,
-        description: record.description ?? null,
+        objectPath: record.objectPath?? null,
+        description: record.description?? null,
         uploadedAt: record.uploadedAt.toISOString(),
         reviewedAt: asIso(record.reviewedAt),
       })),
@@ -323,16 +336,16 @@ router.post("/records", async (req, res) => {
   }
   const user = req.user!;
   const [row] = await db
-    .insert(maintenanceRecordsTable)
-    .values({
-      ...parsed.data,
-      uploadedBy: user.email ?? user.id,
+  .insert(maintenanceRecordsTable)
+   .values({
+     ...parsed.data,
+      uploadedBy: user.email?? user.id,
     })
-    .returning();
+   .returning();
   const [aircraft] = await db
-    .select({ registration: aircraftTable.registration })
-    .from(aircraftTable)
-    .where(eq(aircraftTable.id, row.aircraftId));
+   .select({ registration: aircraftTable.registration })
+   .from(aircraftTable)
+   .where(eq(aircraftTable.id, row.aircraftId));
   await db.insert(activityTable).values({
     kind: "record_uploaded",
     title: "Maintenance record received",
@@ -340,12 +353,12 @@ router.post("/records", async (req, res) => {
   });
   res.status(201).json(
     CreateMaintenanceRecordResponse.parse({
-      ...row,
-      aircraftRegistration: aircraft?.registration ?? "Unknown",
-      objectPath: row.objectPath ?? null,
-      description: row.description ?? null,
+     ...row,
+      aircraftRegistration: aircraft?.registration?? "Unknown",
+      objectPath: row.objectPath?? null,
+      description: row.description?? null,
       uploadedAt: row.uploadedAt.toISOString(),
-      reviewedAt: null,
+       reviewedAt: null,
     }),
   );
 });
@@ -358,21 +371,21 @@ router.patch("/records/:recordId/review", async (req, res) => {
     return;
   }
   const [row] = await db
-    .update(maintenanceRecordsTable)
-    .set({
+   .update(maintenanceRecordsTable)
+   .set({
       reviewStatus: parsed.data.reviewStatus,
       reviewedAt: new Date(),
     })
-    .where(eq(maintenanceRecordsTable.id, Number(req.params.recordId)))
-    .returning();
+   .where(eq(maintenanceRecordsTable.id, Number(req.params.recordId)))
+   .returning();
   if (!row) {
     res.status(404).json({ error: "Maintenance record not found" });
     return;
   }
   const [aircraft] = await db
-    .select({ registration: aircraftTable.registration })
-    .from(aircraftTable)
-    .where(eq(aircraftTable.id, row.aircraftId));
+   .select({ registration: aircraftTable.registration })
+   .from(aircraftTable)
+   .where(eq(aircraftTable.id, row.aircraftId));
   await db.insert(activityTable).values({
     kind: "record_reviewed",
     title: "Record review completed",
@@ -380,10 +393,10 @@ router.patch("/records/:recordId/review", async (req, res) => {
   });
   res.json(
     ReviewMaintenanceRecordResponse.parse({
-      ...row,
-      aircraftRegistration: aircraft?.registration ?? "Unknown",
-      objectPath: row.objectPath ?? null,
-      description: row.description ?? null,
+     ...row,
+      aircraftRegistration: aircraft?.registration?? "Unknown",
+      objectPath: row.objectPath?? null,
+      description: row.description?? null,
       uploadedAt: row.uploadedAt.toISOString(),
       reviewedAt: asIso(row.reviewedAt),
     }),

@@ -17,8 +17,24 @@
     "pg": "^8.23.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "catalog:",
     "@types/pg": "^8.21.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "prettier": "^3.9.6",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vite": "catalog:"
+  },
+  "pnpm": {
+  "overrides": {
+    "@rollup/rollup-darwin-x64": "4.62.3"
+  },
+  
+  "supportedArchitectures": {
+    "os": ["darwin", "linux", "win32"],
+    "cpu": ["x64", "arm64"]
   }
 }
+}
+
