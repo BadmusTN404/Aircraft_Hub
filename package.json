@@ -28,7 +28,8 @@
   },
   "pnpm": {
   "overrides": {
-    "@rollup/rollup-darwin-x64": "4.62.3"
+    "@rollup/rollup-darwin-x64": "4.62.3",
+      "packageManager": "pnpm@9.15.4"
   },
   
   "supportedArchitectures": {
