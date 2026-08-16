@@ -12,7 +12,7 @@
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.1",
     "drizzle-kit": "^0.31.10",
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "catalog:",
     "drizzle-zod": "^0.8.3",
     "pg": "^8.23.0"
   },
@@ -27,15 +27,20 @@
     "vite": "catalog:"
   },
   "pnpm": {
-  "overrides": {
-    "@rollup/rollup-darwin-x64": "4.62.3",
+    "overrides": {
+      "@rollup/rollup-darwin-x64": "4.62.3",
       "packageManager": "pnpm@9.15.4"
-  },
-  
-  "supportedArchitectures": {
-    "os": ["darwin", "linux", "win32"],
-    "cpu": ["x64", "arm64"]
+    },
+    "supportedArchitectures": {
+      "os": [
+        "darwin",
+        "linux",
+        "win32"
+      ],
+      "cpu": [
+        "x64",
+        "arm64"
+      ]
+    }
   }
 }
-}
-
